@@ -76,7 +76,7 @@ void run_child(char **argv) {
     dup2(slave, STDIN_FILENO);
     close(slave);
 
-    execv(argv[0], argv + 1);
+    execv(argv[0], argv);
 
     fprintf(stderr, "failed to execute %s", argv[0]);
     fail();
