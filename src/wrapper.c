@@ -66,16 +66,44 @@ void fail() {
 }
 
 void run_vim(char **argv) {
+    close(master);
     dup2(slave, STDIN_FILENO);
+    close(slave);
     execv(vim_path, argv);
     warn("failed to execute vim");
     fail();
+}
+
+/* Pass any possible control sequence without logging.
+ * TODO: doesn't work, seems that control sequence appears
+ * in stdin shortly after we try to read from it.
+ */
+void pass_control_seq() {
+    char buf[100];
+    int stdin_flags;
+    ssize_t read_cnt;
+
+    stdin_flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+    fcntl(STDIN_FILENO, F_SETFL, stdin_flags | O_NONBLOCK);
+    do {
+        read_cnt = read(STDIN_FILENO, &buf, sizeof(buf));
+        if (read_cnt > 0) {
+            if (write(master, &buf, read_cnt) < 0) {
+                warn("writing control sequence");
+                fail();
+            }
+        }
+    } while (read_cnt > 0 && errno != EAGAIN && errno != EWOULDBLOCK);
+    fcntl(STDIN_FILENO, F_SETFL, stdin_flags);
 }
 
 void log_keys() {
     ssize_t read_res;
     char new_char;
     struct timeval tv;
+
+    close(slave);
+    pass_control_seq();
 
     while (die == 0) {
         read_res = read(STDIN_FILENO, &new_char, 1);
@@ -93,30 +121,34 @@ void log_keys() {
             break;
         }
     }
+    close(master);
+}
+
+void init() {
+    die = 0;
+    resized = 0;
+    dumpfile = fopen(dump_path, "a");
+
+    tcgetattr(STDIN_FILENO, &old_tt);
+    tcgetattr(STDIN_FILENO, &tt);
+    tt.c_lflag &= ~ICANON;
+    tt.c_lflag &= ~ECHO;
+    ioctl(STDIN_FILENO, TIOCGWINSZ, (char *)&win);
+    if (openpty(&master, &slave, NULL, &tt, &win) < 0) {
+        warn("openpty failed");
+        fail();
+    }
+    tcsetattr(STDIN_FILENO, TCSANOW, &tt);
+    grantpt(master);
+    unlockpt(master);
 }
 
 int main(int argc, char **argv) {
     sigset_t block_mask, unblock_mask;
     struct sigaction sa;
 
-    die = 0;
-    resized = 0;
-    dumpfile = fopen(dump_path, "a");
+    init();
 
-    {
-        tcgetattr(STDIN_FILENO, &old_tt);
-        tcgetattr(STDIN_FILENO, &tt);
-        tt.c_lflag &= ~ICANON;
-        tt.c_lflag &= ~ECHO;
-        ioctl(STDIN_FILENO, TIOCGWINSZ, (char *)&win);
-        if (openpty(&master, &slave, NULL, &tt, &win) < 0) {
-                warn("openpty failed");
-                fail();
-        }
-        tcsetattr(STDIN_FILENO, TCSANOW, &tt);
-        grantpt(master);
-        unlockpt(master);
-    }
     /* setup SIGCHLD handler */
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
@@ -136,7 +168,6 @@ int main(int argc, char **argv) {
         fail();
     }
     if (child == 0) {
-
         run_vim(argv);
     } else {
         sa.sa_handler = resize;
