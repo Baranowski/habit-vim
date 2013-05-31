@@ -14,9 +14,6 @@
 #include <errno.h>
 #include <pty.h>
 
-char vim_path[] = "/usr/bin/vim";
-char dump_path[] = "dump.log";
-
 int die;
 int childstatus;
 int master;
@@ -30,10 +27,17 @@ struct	termios old_tt;
 
 int resized;
 
-FILE * dumpfile;
+FILE * logfile;
 
-void warn(const char* msg) {
-    fprintf(stderr, "%s\n", msg);
+void help(char *progname) {
+fprintf(stderr, "Usage:\n"
+    "%s <log file> <exec path> [args ...]\n", progname);
+fprintf(stderr,
+    "\n"
+    "This program executes <exec path>, passing any arguments to\n"
+    "it, and logs every keystroke with corresponding timestamp to\n"
+    "<log file>.\n"
+    );
 }
 
 void finish(int dummy) {
@@ -57,20 +61,24 @@ void resize(int dummy) {
 
 void cleanup() {
     tcsetattr(STDIN_FILENO, TCSANOW, &old_tt);
-    fclose(dumpfile);
+    if (logfile != NULL) {
+        fclose(logfile);
+    }
 }
 
 void fail() {
-    kill(0, SIGTERM);
     cleanup();
+    kill(0, SIGTERM);
 }
 
-void run_vim(char **argv) {
+void run_child(char **argv) {
     close(master);
     dup2(slave, STDIN_FILENO);
     close(slave);
-    execv(vim_path, argv);
-    warn("failed to execute vim");
+
+    execv(argv[0], argv + 1);
+
+    fprintf(stderr, "failed to execute %s", argv[0]);
     fail();
 }
 
@@ -89,7 +97,7 @@ void pass_control_seq() {
         read_cnt = read(STDIN_FILENO, &buf, sizeof(buf));
         if (read_cnt > 0) {
             if (write(master, &buf, read_cnt) < 0) {
-                warn("writing control sequence");
+                fprintf(stderr, "writing control sequence");
                 fail();
             }
         }
@@ -97,23 +105,30 @@ void pass_control_seq() {
     fcntl(STDIN_FILENO, F_SETFL, stdin_flags);
 }
 
-void log_keys() {
+void log_keys(char *log_path) {
     ssize_t read_res;
     char new_char;
     struct timeval tv;
 
     close(slave);
-    pass_control_seq();
+    //pass_control_seq();
+
+    logfile = fopen(log_path, "a");
+    if (logfile == NULL) {
+        fprintf(stderr, "Cannot open %s for writing\n",
+                log_path);
+        fail();
+    }
 
     while (die == 0) {
         read_res = read(STDIN_FILENO, &new_char, 1);
         if (read_res > 0) {
             gettimeofday(&tv, NULL);
             if (write(master, &new_char, 1) < 0) {
-                warn ("write failed");
+                fprintf(stderr, "write failed");
                 fail();
             }
-            fprintf(dumpfile, "%c %ld.%ld\n", new_char,
+            fprintf(logfile, "%c %ld.%06ld\n", new_char,
                     (long)tv.tv_sec, (long)tv.tv_usec);
         } else if (read_res < 0 && errno == EINTR && resized) {
             resized = 0;
@@ -127,7 +142,7 @@ void log_keys() {
 void init() {
     die = 0;
     resized = 0;
-    dumpfile = fopen(dump_path, "a");
+    logfile = NULL;
 
     tcgetattr(STDIN_FILENO, &old_tt);
     tcgetattr(STDIN_FILENO, &tt);
@@ -135,7 +150,7 @@ void init() {
     tt.c_lflag &= ~ECHO;
     ioctl(STDIN_FILENO, TIOCGWINSZ, (char *)&win);
     if (openpty(&master, &slave, NULL, &tt, &win) < 0) {
-        warn("openpty failed");
+        fprintf(stderr, "openpty failed");
         fail();
     }
     tcsetattr(STDIN_FILENO, TCSANOW, &tt);
@@ -146,6 +161,11 @@ void init() {
 int main(int argc, char **argv) {
     sigset_t block_mask, unblock_mask;
     struct sigaction sa;
+
+    if (argc < 3) {
+        help(argv[0]);
+        return EXIT_FAILURE;
+    }
 
     init();
 
@@ -164,17 +184,16 @@ int main(int argc, char **argv) {
     sigprocmask(SIG_SETMASK, &unblock_mask, NULL);
 
     if (child < 0) {
-        warn("fork failed");
+        fprintf(stderr, "fork failed");
         fail();
     }
     if (child == 0) {
-        run_vim(argv);
-    } else {
-        sa.sa_handler = resize;
-        sigaction(SIGWINCH, &sa, NULL);
+        run_child(argv + 2);
     }
+    sa.sa_handler = resize;
+    sigaction(SIGWINCH, &sa, NULL);
 
-    log_keys();
+    log_keys(argv[1]);
 
     cleanup();
     return EXIT_SUCCESS;
