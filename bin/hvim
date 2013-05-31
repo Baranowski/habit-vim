@@ -1,0 +1,20 @@
+#!/bin/bash
+
+vimdir="$HOME/.vim"
+
+pipePath="$vimdir/hvim-pipe"
+logPath="$vimdir/hvim-log"
+
+myPath="$(pwd)/$0"
+myDir="$(dirname "$myPath")"
+bindir="$myDir"
+
+#if [ -p "$pipePath" ]; then
+#    rm "$pipePath"
+#fi
+
+mkfifo "$pipePath"
+
+#./hvim-listener "$pipePath" >> "$logPath" &
+vim -w "$pipePath" $*
+rm "$pipePath"
