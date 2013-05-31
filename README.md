@@ -13,3 +13,7 @@ Simply use the `hvim` command just as you would use `vim`.
 
 Edit the `bin/hvim` file. It's pretty straightforward.
 
+# Bugs
+
+You might run into issues if you try to run several `hvim`
+instances simultaneously.
