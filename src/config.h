@@ -3,7 +3,8 @@
 
 typedef unsigned char vmode_t;
 
-#define MODE_INVALID 255
+#define MAX_MODES 255
+#define MODE_INVALID MAX_MODES
 
 struct transition {
     char key;

@@ -21,7 +21,6 @@ int config_transition(config *conf, vmode_t old_mode, char key, vmode_t *new_mod
     return 0;
 }
 
-
 #define parse_or_fail(parser, event) \
     do { \
         if (!yaml_parser_parse(parser, event)) { \
@@ -36,7 +35,7 @@ int config_transition(config *conf, vmode_t old_mode, char key, vmode_t *new_mod
             fprintf(stderr, "At position: %d:%d\n", \
                     event->start_mark.line, \
                     event->start_mark.column); \
-            return 0; \
+            goto fail; \
         } \
         return 1; \
     } while(0)
@@ -62,9 +61,25 @@ inline int expect_value(yaml_parser_t *parser, yaml_event_t *event, char *val) {
     if (strcmp(event->data.scalar.value, val) != 0) {
         fprintf(stderr, "Unexpected value: %s; expected: %s\n",
                 event->data.scalar.value, val);
-        return 0;
+        goto 0;
     }
     return 1;
+}
+
+static int parse_modes(config *conf, yaml_parser_t *parser, yaml_event_t *event) {
+    struct mode* modes;
+    modes = (struct mode *)calloc(MAX_MODES, sizeof(mode[0]));
+
+
+    wrap(parser, event,
+         expect_event, YAML_SCALAR_EVENT);
+    conf->init_mode = 0;
+
+    return 1;
+
+fail:
+    free(modes);
+    return 0;
 }
 
 static int parse_top(config *conf, yaml_parser_t *parser, yaml_event_t *event) {
@@ -84,7 +99,9 @@ static int parse_top(config *conf, yaml_parser_t *parser, yaml_event_t *event) {
          expect_value, "Modes");
     yaml_event_delete(event);
 
-    parse_modes(conf);
+    if (!parse_modes(conf, parser, event)) {
+        return 0;
+    }
 
     wrap_final(parser, event,
                expect_event, YAML_MAPPING_END_EVENT);
@@ -96,6 +113,9 @@ static int parse_top(config *conf, yaml_parser_t *parser, yaml_event_t *event) {
                expect_event, YAML_STREAM_END_EVENT);
 
     return 1;
+
+fail:
+    return 0;
 }
 
 #undef wrap
