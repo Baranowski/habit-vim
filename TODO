@@ -1,3 +1,9 @@
 * Several instances running simultaneously.
 
 * Handle nicely control sequences
+
+* Pass Ctrl+C
+
+* Find out why Fugitive does not work and fix it
+
+* Make it work on OS X
