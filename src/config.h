@@ -22,6 +22,7 @@ typedef struct config {
     vmode_t num_modes;
 } config;
 
+void config_debug_print(config *conf);
 config *config_read(char *path);
 void config_free(config *);
 vmode_t config_init_mode(config *conf);

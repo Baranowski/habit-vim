@@ -6,38 +6,6 @@ extern "C" {
 #include <string.h>
 #include <stdio.h>
 
-vmode_t config_init_mode(config *conf) {
-    return conf->init_mode;
-}
-
-char *config_mode_name(config *conf, vmode_t mode) {
-    return conf->modes[mode].name;
-}
-
-int config_transition(config *conf, vmode_t old_mode, char key, vmode_t *new_mode) {
-    struct transition *it = conf->modes[old_mode].transitions;
-    for (; it->nmid != MODE_INVALID; ++it) {
-        if (it->key == key) {
-            *new_mode = it->nmid;
-            return 1;
-        }
-    }
-    return 0;
-}
-
-static void mode_free(struct mode* md) {
-    free(md->name);
-    free(md->transitions);
-}
-
-void config_free(config *conf) {
-    vmode_t mode_it;
-    for (mode_it = 0; mode_it < conf->num_modes; ++mode_it) {
-        mode_free(&conf->modes[mode_it]);
-    }
-    free(conf);
-}
-
 #include <yaml-cpp/yaml.h>
 #include <string>
 
@@ -56,7 +24,7 @@ vmode_t find_mode_by_name(config *conf, const char *name) {
 }
 
 int parse_mode_transitions(config *conf, int mid, const YAML::Node &transs) {
-    if (transs.IsMap()) {
+    if (!transs.IsMap()) {
         fprintf(stderr, "Config file: '%s/Transitions' is not a map.\n", conf->modes[mid].name);
         return 0;
     }
@@ -160,4 +128,3 @@ fail:
     free(result);
     return NULL;
 }
-

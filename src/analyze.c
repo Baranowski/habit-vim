@@ -9,15 +9,12 @@ void help(char *progname) {
 "    %s config_file < log_file\n", progname);
 }
 
-config * config_read(char *config_path) {
-}
-
 void process_logs(config *conf) {
     int matched;
     char key;
     long secs, msecs;
-    mode_t mode = config_init_mode(conf);
-    mode_t new_mode;
+    vmode_t mode = config_init_mode(conf);
+    vmode_t new_mode;
 
     printf("%s: ", config_mode_name(conf, mode));
     while ((matched = scanf("%c %ld.%ld\n",&key, &secs, &msecs)) != EOF) {
@@ -45,10 +42,11 @@ int main(int argc, char *argv[]) {
     }
     conf = config_read(argv[1]);
     if (conf == NULL) {
-        fprintf(stderr, "Error reading config from: %s", argv[1]);
+        fprintf(stderr, "Error reading config from: %s\n", argv[1]);
         return EXIT_FAILURE;
     }
-    process_logs(conf);
+    config_debug_print(conf);
+    //process_logs(conf);
     config_free(conf);
     return EXIT_SUCCESS;
 }
