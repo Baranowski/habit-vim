@@ -1,0 +1,21 @@
+Modes:
+  - Name: Normal
+    Transitions:
+        Input:
+            - i
+            - O
+            - o
+            - a
+            - A
+            - I
+        Command:
+            - ':'
+  - Name: Command
+    Transitions:
+        Normal:
+            - <Ret>
+  - Name: Input
+    Transitions:
+        Normal:
+            - <Esc>
+
