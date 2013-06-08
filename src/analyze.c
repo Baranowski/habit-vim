@@ -2,11 +2,31 @@
 #include <stdlib.h>
 
 #include "config.h"
+#include "keys.h"
 
 void help(char *progname) {
     fprintf(stderr,
 "Usage:\n"
 "    %s config_file < log_file\n", progname);
+}
+
+int read_line(char *key, long *secs, long *msecs) {
+    int getc_match = getchar();
+    int scanf_match;
+    if (getc_match == EOF) {
+        return EOF;
+    } else {
+        *(unsigned char *)key = getc_match;
+        getc_match = 1;
+    }
+    scanf_match = scanf(" %ld.%ld", secs, msecs);
+    // Read the EOL
+    getchar();
+    if (scanf_match == EOF) {
+        return EOF;
+    } else {
+        return getc_match + scanf_match;
+    }
 }
 
 void process_logs(config *conf) {
@@ -17,18 +37,23 @@ void process_logs(config *conf) {
     vmode_t new_mode;
 
     printf("%s: ", config_mode_name(conf, mode));
-    while ((matched = scanf("%c %ld.%ld\n",&key, &secs, &msecs)) != EOF) {
+    while ((matched = read_line(&key, &secs, &msecs)) != EOF) {
         if (matched != 3) {
             fprintf(stderr, "Scanf matched %d elements, expected 3\n", matched);
             config_free(conf);
             exit(EXIT_FAILURE);
         }
 
-        printf("%c", key);
+        {
+            char *str;
+            str = hreadable_from_key(key);
+            printf("%s", str);
+            free(str);
+        }
         if (config_transition(conf, mode, key, &new_mode)) {
             printf("\n");
             mode = new_mode;
-            printf("%s: ", config_mode_name(conf, mode));
+            printf("Changing mode to %s:\n", config_mode_name(conf, mode));
         }
     }
     printf("\n");
@@ -45,8 +70,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Error reading config from: %s\n", argv[1]);
         return EXIT_FAILURE;
     }
-    config_debug_print(conf);
-    //process_logs(conf);
+    process_logs(conf);
     config_free(conf);
     return EXIT_SUCCESS;
 }
