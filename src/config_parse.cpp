@@ -1,5 +1,6 @@
 extern "C" {
 #include "config.h"
+#include "keys.h"
 }
 
 #include <stdlib.h>
@@ -49,9 +50,19 @@ int parse_mode_transitions(config *conf, int mid, const YAML::Node &transs) {
 
         //TODO: make sure the config syntax is correct
         for (int i = 0; i < it->second.size(); ++i) {
+            char keycode;
+            const char *hreadable;
+
+            hreadable = it->second[i].as<std::string>().c_str();
+            keycode = key_from_hreadable(hreadable);
+
+            if (keycode == '\0') {
+                fprintf(stderr, "Config file: Unrecognized key: %s\n",
+                        hreadable);
+                return 0;
+            }
             conf->modes[mid].transitions[trans_current].nmid = nmid;
-            conf->modes[mid].transitions[trans_current].key =
-                it->second[i].as<std::string>()[0];
+            conf->modes[mid].transitions[trans_current].key = keycode;
             ++trans_current;
         }
     }
