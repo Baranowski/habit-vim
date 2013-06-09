@@ -1,15 +1,11 @@
+= Bugs
+
+* Does not build on OS X
+* Ctrl+C breaks things
+* Some keys are interpreted as Ctrl+something combination (e.g. Tab - ^I, Return - ^J)
+
+= Features TODO
+
 * Several instances running simultaneously.
-
 * Handle nicely control sequences
-
-* Pass Ctrl+C
-
-* Find out why Fugitive does not work and fix it
-
-* Make it work on OS X
-
 * Config parsing: error handling and cleanup
-
-* Handling Ctrl Combos
-
-* Requirements in Readme

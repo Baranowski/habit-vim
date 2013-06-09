@@ -1,3 +1,10 @@
+# Requirements
+
+1. Linux operating system
+2. yaml-cpp (can be obtained from here: http://code.google.com/p/yaml-cpp/)
+
+This project will build only if yaml-cpp is installed globally on your system. However, modifying Makefile to fix that should not be hard.
+
 # Installation
 
 1. Run `make` to build the wrapper tool.
@@ -15,5 +22,4 @@ Edit the `bin/hvim` file. It's pretty straightforward.
 
 # Bugs
 
-You might run into issues if you try to run several `hvim`
-instances simultaneously.
+See the TODO file.
