@@ -1,15 +1,18 @@
+= Bugs
+
+* Does not build on OS X
+* Ctrl+C breaks things
+* Some keys are interpreted as Ctrl+something combination (e.g. Tab - ^I, Return - ^J)
+* Multi-key commands are not recognized as such (e.g. 'dd' will be treated as two separate actions). This one requires lot of work.
+
+= Features TODO
+
 * Several instances running simultaneously.
-
 * Handle nicely control sequences
-
-* Pass Ctrl+C
-
-* Find out why Fugitive does not work and fix it
-
-* Make it work on OS X
-
 * Config parsing: error handling and cleanup
 
-* Handling Ctrl Combos
+= Code maintenance
 
-* Requirements in Readme
+* Uniform error handling
+* Document code
+* Clean up and split up analyze.c

@@ -47,3 +47,7 @@ void config_debug_print(config *conf) {
         }
     }
 }
+
+int config_optimize_mode(config *conf, vmode_t mode) {
+    return (conf->opt_mode == mode);
+}

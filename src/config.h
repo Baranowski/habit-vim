@@ -19,6 +19,7 @@ struct mode {
 typedef struct config {
     struct mode *modes;
     vmode_t init_mode;
+    vmode_t opt_mode;
     vmode_t num_modes;
 } config;
 
@@ -28,5 +29,6 @@ void config_free(config *);
 vmode_t config_init_mode(config *conf);
 char *config_mode_name(config *, vmode_t);
 int config_transition(config *, vmode_t old_mode, char key, vmode_t *new_mode);
+int config_optimize_mode(config *, vmode_t);
 
 #endif
