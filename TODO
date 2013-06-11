@@ -7,6 +7,10 @@
 
 = Features TODO
 
+* More sophisticated pattern recognition:
+** Make use of timestamps
+** Don't distinguish between some keys (e.g. j, h, k and l)
+** Come up with some more ideas
 * Several instances running simultaneously.
 * Handle nicely control sequences
 * Config parsing: error handling and cleanup
