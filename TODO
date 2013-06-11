@@ -9,3 +9,8 @@
 * Several instances running simultaneously.
 * Handle nicely control sequences
 * Config parsing: error handling and cleanup
+
+= Code maintenance
+
+* Uniform error handling
+* Document code
