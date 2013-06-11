@@ -3,7 +3,7 @@
 * Does not build on OS X
 * Ctrl+C breaks things
 * Some keys are interpreted as Ctrl+something combination (e.g. Tab - ^I, Return - ^J)
-* Multi-key commands are not recognized as such (i.e. 'dd' will be treated as two separate actions). This one requires lot of work.
+* Multi-key commands are not recognized as such (e.g. 'dd' will be treated as two separate actions). This one requires lot of work.
 
 = Features TODO
 
@@ -15,3 +15,4 @@
 
 * Uniform error handling
 * Document code
+* Clean up and split up analyze.c
