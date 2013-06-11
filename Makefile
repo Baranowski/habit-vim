@@ -5,6 +5,9 @@ ANALYZE_OBJ = \
 	      src/analyze.o \
 	      src/config.o \
 	      src/config_parse.o \
+	      lib/sarray/sarray.o \
+	      lib/sarray/scode.o \
+	      lib/sarray/lcp.o \
 
 ANALYZE_LIBS += $(shell pkg-config --libs yaml-cpp)
 
@@ -19,7 +22,8 @@ bin/analyze:	$(ANALYZE_OBJ)
 
 
 DEPS = src/config.h \
-       src/keys.h
+       src/keys.h \
+       lib/sarray/sarray.h
 
 %.o: %.c $(DEPS)
 	$(CC) -c -o $@ $<

@@ -1,0 +1,145 @@
+.TH SARRAY 3
+.SH NAME
+sarray, ssarray, bsarray, lcp, scode \- suffix-array functions
+.SH SYNOPSIS
+.nf
+.ft B
+#include "sarray.h"
+int sarray(int *a, int n);
+int ssarray(int *a);
+int bsarray(const unsigned char *s, int *a, int n);
+int *lcp(const int *a, const char *s, int n);
+unsigned char *scode(const char *s);
+.SH DESCRIPTION
+.I Sarray
+and
+.I ssarray
+convert array 
+.I a
+into a suffix array for 
+.I a.
+The 
+.I n
+values in
+.I a
+must form a contiguous set of integers in the range 0 to some positive value,
+with 0 occurring only as an endmark, in
+.IR a [ n \-1].
+.PP
+.I Bsarray
+builds, in
+.IR a 
+(of length 
+.IR n +1),
+a suffix array for the
+.IR n -byte
+string 
+.IR b ,
+which need not contain an endmark.
+.PP
+All three suffix-array builders return the index
+at which the whole string is identified in
+.IR a .
+(This value is used in Burrows-Wheeler data compression.)
+.PP
+.I Lcp
+returns an array
+.IR l ,
+in which
+.IR l [ j ]
+is the length of the longest common prefix of 
+the suffixes identified by
+.IR a [ j \-1]
+and
+.IR a [ j ],
+except
+.IR l [0]=0.
+It runs in time
+.IR O ( n )
+and uses temporary space equal in size to
+.IR a .
+.PP
+.I Scode 
+returns an encoding of string 
+.I s
+in a form suitable for input to
+.I sarray
+or
+.I ssarray.
+.SS Explanation
+Suffix arrays are
+useful for information retrieval, biological sequence analysis,
+plagiarism detection, data compression, linguistic analysis, etc.
+.PP
+A suffix array
+identifies, in lexicographic order, the (positions of) the 
+suffixes of a given string.
+Thus the suffix array for the string "abab",
+including its final null character, is
+{4,2,0,3,1},
+identifying the suffixes "",
+"ab", "abab", "b", "bab".
+Equivalently, it identifies circular shifts
+in lexicographic order.  For the string "abab", with #
+as a visible endmark, the shifts are "#abab", "ab#ab",
+"abab#", "b#aba", "bab#a".
+.PP
+The three array-building functions run in time
+.IR O ( n " log " n ).
+.I Sarray
+and
+.I bsarray
+use a hybrid algorithm, typically several times
+as fast as the deliberately simple
+.I ssarray .
+All three require temporary space equal in size to
+.I a.
+Space overhead may be reduced by using
+.IR qsort (3)
+with a suitable comparison function,
+but running time then becomes at best
+.IR O ( nm " log " n )
+.I m
+is the length of the longest repeated substring.
+.SH EXAMPLES
+.HP
+Build, in
+.I a 
+and 
+.I l
+respectively,
+a suffix array for string 
+.I s 
+and the associated lcp array.
+.
+.br
+.nf
+.ft CW
+int *l;
+int n = strlen(s)+1;
+int *a = scode(s);
+sarray(a, n);
+l = lcp(a, s, n);
+.fi
+.HP
+Build the same suffix array, using
+.I bsarray.
+.br
+.nf
+.ft CW
+int n = strlen(s);
+int *a = malloc((n+1)*sizeof(int));
+bsarray((unsigned char*)s, a, n);
+.SH "RETURN VALUE
+.I Sarray,
+.I ssarray,
+and
+.I bsarray
+return \-1 for bad data or insufficient space.
+.PP
+.I Lcp
+and
+.I scode
+return
+.IR malloc 'ed
+arrays, or 0 for bad data or insufficient space.
