@@ -34,10 +34,6 @@ have been identified as belonging to the correct mode), you may use the program 
 
 This will write to the standard output (the `summary` file in this example) the most often used key combinations, ordered from the most to the least common one.
 
-# Configuration
-
-Edit the `bin/hvim` file. It's pretty straightforward.
-
 # Bugs
 
 See the TODO file.
