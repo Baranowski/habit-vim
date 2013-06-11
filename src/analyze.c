@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 
 #include "config.h"
 #include "keys.h"
@@ -259,6 +260,77 @@ fail:
     exit(EXIT_FAILURE);
 }
 
+#define MAX_CHAIN_LEN 20
+#define INF INT_MAX
+#define MIN_REPETITIONS 5
+
+struct result {
+    int repetitions;
+    int len;
+    int idx;
+};
+
+int rescmp(const void *va, const void *vb) {
+    const struct result *a = (const struct result *)va;
+    const struct result *b = (const struct result *)vb;
+    if (a->repetitions > b->repetitions) {
+        return -1;
+    } else if (a->repetitions < b->repetitions) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+int identify_patterns(size_t len, char *keys, int *a, int *l) {
+    int it;
+    int cl; // chain length
+    int starts[MAX_CHAIN_LEN];
+
+    struct result *ress;
+    int rit = 0;
+    int reps;
+
+    ress = (struct result *)calloc(MAX_CHAIN_LEN*len, sizeof(*ress));
+    if (ress == NULL) {
+        return 0;
+    }
+
+    for (cl = 0; cl < MAX_CHAIN_LEN; ++cl) {
+        starts[cl] = INF;
+    }
+    for (it = 1; it < len; ++it) {
+        for (cl = 1; cl <= l[it] && cl <= MAX_CHAIN_LEN; ++cl) {
+            if (it-1 < starts[cl-1]) {
+                starts[cl-1] = it-1;
+            }
+        }
+        for (; cl <= MAX_CHAIN_LEN; ++cl) {
+            if (starts[cl-1] < INF) {
+                reps = it - starts[cl-1];
+                if (reps > MIN_REPETITIONS) {
+                    ress[rit].repetitions = reps;
+                    ress[rit].len = cl;
+                    ress[rit].idx = a[it-1];
+                    ++rit;
+                }
+            }
+            starts[cl-1] = it;
+        }
+    }
+    qsort(ress, rit, sizeof(*ress), rescmp);
+    for (it = 0; it < rit; ++it) {
+        printf("Repetitions: % 6d, length: %d, chain: %.*s\n",
+                ress[it].repetitions,
+                ress[it].len,
+                ress[it].len,
+                &keys[ress[it].idx]);
+    }
+
+    free(ress);
+    return 1;
+}
+
 void find_patterns(config *conf) {
     char *keys;
     struct timedesc *tstamps;
@@ -280,6 +352,10 @@ void find_patterns(config *conf) {
     l = lcp(a, keys, len);
     if (l == NULL) {
         fprintf(stderr, "lcp failure\n");
+        goto lcp_fail;
+    }
+
+    if (!identify_patterns(len, keys, a, l)) {
         goto lcp_fail;
     }
 
