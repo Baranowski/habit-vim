@@ -3,6 +3,7 @@
 
 #include "config.h"
 #include "keys.h"
+#include "../lib/sarray/sarray.h"
 
 void help(char *progname) {
     fprintf(stderr,
@@ -150,6 +151,25 @@ int long_key_delay(struct timedesc a, struct timedesc b) {
     return (diff.secs > LONG_DELAY_SECS);
 }
 
+int extend_arrs(size_t *arrlen, char **keys, struct timedesc **tstamps) {
+    void *tmp;
+
+    *arrlen *= 2;
+    tmp = realloc(*keys, *arrlen * sizeof(**keys));
+    if (tmp == NULL) {
+        fprintf(stderr, "Realloc failed.\n");
+        return 0;
+    }
+    *keys = tmp;
+    tmp = realloc(*tstamps, *arrlen * sizeof(**tstamps));
+    if (tmp == NULL) {
+        fprintf(stderr, "Realloc failed.\n");
+        return 0;
+    }
+    *tstamps = tmp;
+    return 1;
+}
+
 void gen_key_time_data(config *conf, char **out_keys,
                        struct timedesc **out_tstamps,
                        size_t *len) {
@@ -184,23 +204,10 @@ void gen_key_time_data(config *conf, char **out_keys,
             goto fail;
         }
         if (config_optimize_mode(conf, mode)) {
-            if (it == arrlen) {
-                void *tmp;
-
-                arrlen *= 2;
-                tmp = realloc(keys, arrlen * sizeof(keys[0]));
-                if (tmp == NULL) {
-                    fprintf(stderr, "Realloc failed.\n");
-                    goto tstamps_fail;
-                }
-                keys = tmp;
-                tmp = realloc(tstamps, arrlen * sizeof(tstamps[0]));
-                if (tmp == NULL) {
-                    fprintf(stderr, "Realloc failed.\n");
-                    goto tstamps_fail;
-                }
-                tstamps = tmp;
+            if (it == arrlen && !extend_arrs(&arrlen, &keys, &tstamps)) {
+                goto tstamps_fail;
             }
+
             keys[it] = key;
             if (it > 0) {
                 if (changed_mode || long_key_delay(prev_time, key_time)) {
@@ -222,6 +229,22 @@ void gen_key_time_data(config *conf, char **out_keys,
             changed_mode = 0;
         }
     }
+    /*
+     * Add terminating zero
+     */
+    {
+        if (it == arrlen && !extend_arrs(&arrlen, &keys, &tstamps)) {
+            goto tstamps_fail;
+        }
+        keys[it] = '\0';
+        if (it > 0) {
+            tstamps[it] = tstamps[it-1];
+        } else {
+            tstamps[it].secs = 0;
+            tstamps[it].msecs = 0;
+        }
+        ++it;
+    }
     *out_keys = keys;
     *out_tstamps = tstamps;
     *len = it;
@@ -241,12 +264,39 @@ void find_patterns(config *conf) {
     struct timedesc *tstamps;
     size_t len;
     size_t it;
+    int *a;
+    int *l;
     gen_key_time_data(conf, &keys, &tstamps, &len);
-    for (it = 0; it < len; ++it) {
-        printf("%c %ld.%06ld\n", keys[it], tstamps[it].secs, tstamps[it].msecs);
+
+    a = scode(keys);
+    if (a == NULL) {
+        fprintf(stderr, "scode failure\n");
+        goto scode_fail;
     }
+    if (sarray(a, len) < 0) {
+        fprintf(stderr, "sarray failure\n");
+        goto sarray_fail;
+    }
+    l = lcp(a, keys, len);
+    if (l == NULL) {
+        fprintf(stderr, "lcp failure\n");
+        goto lcp_fail;
+    }
+
+    free(l);
+    free(a);
     free(keys);
     free(tstamps);
+    return;
+
+lcp_fail:
+    free(l);
+sarray_fail:
+    free(a);
+scode_fail:
+    free(keys);
+    free(tstamps);
+    exit(EXIT_FAILURE);
 }
 
 int main(int argc, char *argv[]) {
