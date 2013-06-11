@@ -7,7 +7,29 @@
 void help(char *progname) {
     fprintf(stderr,
 "Usage:\n"
-"    %s config_file < log_file\n", progname);
+"    %s config_file [--mode-logs] < log_file\n", progname);
+}
+
+void parse_args(int argc, char *argv[], char **conf_path, int *mode_logs) {
+    if (argc < 2) {
+        fprintf(stderr, "Too few arguments.\n");
+        goto fail;
+    }
+    *conf_path = argv[1];
+    *mode_logs = 0;
+    if (argc > 2) {
+        if (strcmp(argv[2], "--mode-logs") == 0) {
+            *mode_logs = 1;
+        } else {
+            fprintf(stderr, "Unrecognized option: %s\n", argv[2]);
+            goto fail;
+        }
+    }
+    return;
+
+fail:
+    help(argv[0]);
+    exit(EXIT_FAILURE);
 }
 
 int read_line(char *key, long *secs, long *msecs) {
@@ -42,7 +64,7 @@ FILE *open_mode_log(config *conf, vmode_t mode) {
     return fopen(new_filename, "a");
 }
 
-void process_logs(config *conf) {
+void produce_mode_logs(config *conf) {
     int matched;
     char key;
     long secs, msecs;
@@ -94,18 +116,27 @@ fail:
     exit(EXIT_FAILURE);
 }
 
+void find_patterns(config *conf) {
+    //TODO
+}
+
 int main(int argc, char *argv[]) {
     config *conf = NULL;
-    if (argc != 2) {
-        help(argv[0]);
-        return EXIT_FAILURE;
-    }
-    conf = config_read(argv[1]);
+    char *conf_path;
+    int mode_logs;
+
+    parse_args(argc, argv, &conf_path, &mode_logs);
+
+    conf = config_read(conf_path);
     if (conf == NULL) {
         fprintf(stderr, "Error reading config from: %s\n", argv[1]);
         return EXIT_FAILURE;
     }
-    process_logs(conf);
+    if (mode_logs) {
+        produce_mode_logs(conf);
+    } else {
+        find_patterns(conf);
+    }
     config_free(conf);
     return EXIT_SUCCESS;
 }
