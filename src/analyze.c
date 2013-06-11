@@ -116,8 +116,137 @@ fail:
     exit(EXIT_FAILURE);
 }
 
+#define INIT_ARR_LEN 1024
+struct timedesc {
+    long secs, msecs;
+};
+
+struct timedesc tstamps_add(struct timedesc a, struct timedesc b) {
+    struct timedesc res;
+    res = a;
+    res.msecs += b.msecs;
+    res.secs += res.msecs / (1000 * 1000);
+    res.msecs %= (1000 * 1000);
+    res.secs += b.secs;
+    return res;
+}
+
+struct timedesc tstamps_sub(struct timedesc a, struct timedesc b) {
+    struct timedesc res;
+    res.secs = a.secs - b.secs;
+    if (a.msecs < b.msecs) {
+        res.secs -= 1;
+        res.msecs = (1000 * 1000) + a.msecs - b.msecs;
+    } else {
+        res.msecs = a.msecs - b.msecs;
+    }
+    return res;
+}
+
+#define LONG_DELAY_SECS 3
+
+int long_key_delay(struct timedesc a, struct timedesc b) {
+    struct timedesc diff = tstamps_sub(b, a);
+    return (diff.secs > LONG_DELAY_SECS);
+}
+
+void gen_key_time_data(config *conf, char **out_keys,
+                       struct timedesc **out_tstamps,
+                       size_t *len) {
+    int matched;
+    char key;
+    vmode_t mode = config_init_mode(conf);
+    vmode_t new_mode;
+
+    struct timedesc key_time, prev_time;
+
+    char *keys;
+    struct timedesc *tstamps;
+    size_t arrlen;
+    size_t it = 0;
+    int changed_mode = 0;
+
+    keys = (char *)malloc(INIT_ARR_LEN * sizeof(keys[0]));
+    if (keys == NULL) {
+        fprintf(stderr, "Couldn't initialize keys array\n");
+        goto fail;
+    }
+    tstamps = (struct timedesc *)malloc(INIT_ARR_LEN * sizeof(tstamps[0]));
+    if (tstamps == NULL) {
+        fprintf(stderr, "Couldn't initialize tstamps array\n");
+        goto keys_fail;
+    }
+    arrlen = INIT_ARR_LEN;
+
+    while ((matched = read_line(&key, &key_time.secs, &key_time.msecs)) != EOF) {
+        if (matched != 3) {
+            fprintf(stderr, "Scanf matched %d elements, expected 3\n", matched);
+            goto fail;
+        }
+        if (config_optimize_mode(conf, mode)) {
+            if (it == arrlen) {
+                void *tmp;
+
+                arrlen *= 2;
+                tmp = realloc(keys, arrlen * sizeof(keys[0]));
+                if (tmp == NULL) {
+                    fprintf(stderr, "Realloc failed.\n");
+                    goto tstamps_fail;
+                }
+                keys = tmp;
+                tmp = realloc(tstamps, arrlen * sizeof(tstamps[0]));
+                if (tmp == NULL) {
+                    fprintf(stderr, "Realloc failed.\n");
+                    goto tstamps_fail;
+                }
+                tstamps = tmp;
+            }
+            keys[it] = key;
+            if (it > 0) {
+                if (changed_mode || long_key_delay(prev_time, key_time)) {
+                    tstamps[it] = tstamps[it-1];
+                } else  {
+                    tstamps[it] = tstamps_add(tstamps[it-1], tstamps_sub(key_time, prev_time));
+                }
+            } else {
+                tstamps[it].secs = 0;
+                tstamps[it].msecs = 0;
+            }
+            prev_time = key_time;
+            ++it;
+        }
+        if (config_transition(conf, mode, key, &new_mode)) {
+            changed_mode = 1;
+            mode = new_mode;
+        } else {
+            changed_mode = 0;
+        }
+    }
+    *out_keys = keys;
+    *out_tstamps = tstamps;
+    *len = it;
+    return;
+
+tstamps_fail:
+    free(tstamps);
+keys_fail:
+    free(keys);
+fail:
+    config_free(conf);
+    exit(EXIT_FAILURE);
+}
+
 void find_patterns(config *conf) {
-    //TODO
+    char *keys;
+    struct timedesc *tstamps;
+    size_t len;
+    size_t it;
+    gen_key_time_data(conf, &keys, &tstamps, &len);
+    for (it = 0; it < len; ++it) {
+        printf("%c %ld.%06ld\n", keys[it], tstamps[it].secs, tstamps[it].msecs);
+    }
+    free(keys);
+    free(tstamps);
 }
 
 int main(int argc, char *argv[]) {

@@ -70,6 +70,21 @@ int parse_mode_transitions(config *conf, int mid, const YAML::Node &transs) {
     return 1;
 }
 
+int parse_optimize(config *conf, const YAML::Node &opt_node) {
+    if (!opt_node.IsScalar()) {
+        fprintf(stderr, "Config file: 'Optimize' is not a scalar.\n");
+        return 0;
+    }
+    const char *mode_name = opt_node.as<std::string>().c_str();
+    vmode_t result = find_mode_by_name(conf, mode_name);
+    if (result == MODE_INVALID) {
+        fprintf(stderr, "Config file: 'Optimize': unknown mode: %s\n", mode_name);
+        return 0;
+    }
+    conf->opt_mode = result;
+    return 1;
+}
+
 int parse_modes(config *conf, const YAML::Node &modes_node) {
     if (!modes_node.IsSequence()) {
         fprintf(stderr, "Config file: 'Modes' is not a sequence.\n");
@@ -127,6 +142,9 @@ config *config_read(char *path) {
             goto fail;
         }
         if (!parse_modes(result, root["Modes"])) {
+            goto fail;
+        }
+        if (!parse_optimize(result, root["Optimize"])) {
             goto fail;
         }
     } catch (YAML::Exception &e) {
